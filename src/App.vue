@@ -11,7 +11,16 @@ import CustomGroup from "./components/CustomGroup.vue";
 import data from "./data";
 import { UUID } from "./utils";
 const uuid = UUID(1);
+
+interface NodePointerProps {
+  prevNode: string;
+  nextNode: Array<string>;
+  nextPositionX: number;
+  step: number;
+}
+
 const onDataResolve = () => {
+  console.log(_.difference([1, 2], [2, 1, 4]));
   const _data = _.cloneDeep(data);
 
   const nodes = [];
@@ -21,39 +30,102 @@ const onDataResolve = () => {
   const end = _.find(_data, (item) => !item.after.length);
 
   const startNode = { id: start?.id, type: "custom-original", data: start, position: { x: -64, y: 0 } };
-  nodes.push(startNode);
-
   const endNode = { id: end?.id, type: "custom-original", data: end, position: { x: -64, y: 180 } };
+
+  nodes.push(startNode);
   nodes.push(endNode);
 
+  const nextNode: Array<string> = _.filter(start?.after, (node) => node !== end?.id);
   /* 移除已经使用的对象 */
   _.pullAllBy(_data, [{ id: start?.id }, { id: end?.id }], "id");
-  console.log(_data);
+
+  const step = 80;
+  const { width: containerWidth } = onCalculationNodeWidth(nextNode.length);
+
+  let nodePointer: NodePointerProps = {
+    prevNode: start?.id || "",
+    nextNode,
+    nextPositionX: -(nextNode.length > 1 ? containerWidth / 2 : 250 / 2),
+    step: step + 40
+  };
+
+  let i = 0;
+  do {
+    console.log("sdfs");
+    if (!_data.length) break;
+    i++;
+    console.log(`第 ${i} 层`);
+
+    if (nodePointer.nextNode.length > 1) {
+    } else {
+      const { nextNode } = nodePointer;
+      console.log(nextNode);
+      const single = onSingleNode(nextNode[0], data, {
+        prevNode: nodePointer.prevNode,
+        tailNode: end?.id || "",
+        positionX: nodePointer.nextPositionX,
+        step: nodePointer.step
+      });
+
+      console.log(single.node);
+      nodes.push(single.node);
+
+      nodePointer = {
+        ...nodePointer,
+        prevNode: single.node.id,
+        nextNode: single.nextNode,
+        step: single.step,
+        nextPositionX: single.nextPositionX
+      };
+
+      _.pullAllBy(_data, [{ id: nextNode[0] }], "id");
+    }
+  } while (i < 2);
+
+  // let nodePointers: Array<NodePointerProps> = [];
+
   // console.log(start)
   // console.log(end)
 
   return nodes;
 };
 
-// const onSingleNode = (nodeSign: string, data: any[], options: CreateNodeProps) => {
-//   const { prevNode, tailNode, positionX, step } = options;
-//   const nodeinfo = _.find(data, ["id", nodeSign]);
+/**
+ * @brief 计算节点组的宽度
+ */
+const onCalculationNodeWidth = (amount: number) => {
+  const offsetStep = 100;
+  const horizontalOffset = 250 + offsetStep;
 
-//   const nodeId = uuid();
-//   const nextNode = _.filter(nodeinfo?.after_node_id || [], (node) => node !== tailNode);
+  return { width: horizontalOffset * amount - offsetStep, offset: horizontalOffset };
+};
 
-//   const { width } = onCalculationNodeWidth(nextNode.length);
-//   const nextPositionX = nextNode.length === 1 ? positionX : 64 - width / 2;
+interface CreateNodeProps {
+  prevNode: string;
+  tailNode: string;
+  positionX: number;
+  step: number;
+}
+const onSingleNode = (nodeSign: string, data: any[], options: CreateNodeProps) => {
+  const { prevNode, tailNode, positionX, step } = options;
+  const nodeinfo = _.find(data, ["id", nodeSign]);
 
-//   return {
-//     node: { id: nodeId, type: "custom", position: { x: positionX, y: step }, data: nodeinfo },
-//     edge: { id: uuid(), source: prevNode, target: nodeId, type: "step", markerEnd: MarkerType.ArrowClosed },
-//     nextNode,
-//     nextPositionX,
-//     step: step + 140 + 90,
-//     connect: nextNode.length ? "" : nodeId
-//   };
-// };
+  const nodeId = uuid();
+  const nextNode = _.filter(nodeinfo?.after || [], (node) => node !== tailNode);
+
+  // const { width } = onCalculationNodeWidth(nextNode.length);
+  // const nextPositionX = nextNode.length === 1 ? positionX : 64 - width / 2;
+  const nextPositionX = positionX;
+
+  return {
+    node: { id: nodeId, type: "custom", position: { x: positionX, y: step }, data: nodeinfo },
+    edge: { id: uuid(), source: prevNode, target: nodeId, type: "step", markerEnd: MarkerType.ArrowClosed },
+    nextNode,
+    nextPositionX,
+    step: step + 140 + 90,
+    connect: nextNode.length ? "" : nodeId
+  };
+};
 
 // const onCreateMultipleNode = (nodeSigns: Array<string>, data: AnyProps[], options: CreateNodeProps) => {
 //   const { prevNode, tailNode, positionX, step } = options;
@@ -194,7 +266,7 @@ onPaneReady(({ fitView }) => {
       </template>
 
       <template #node-custom="props">
-        <CustomNode :data="props" />
+        <CustomNode :data="props.data" />
       </template>
 
       <template #node-custom-group>
