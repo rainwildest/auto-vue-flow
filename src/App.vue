@@ -51,14 +51,13 @@ const onDataResolve = () => {
 
   let i = 0;
   do {
-    console.log("sdfs");
     if (!_data.length) break;
     i++;
     console.log(`第 ${i} 层`);
-
-    if (nodePointer.nextNode.length > 1) {
+    const { nextNode } = nodePointer;
+    if (nextNode.length > 1) {
+      console.log("我到这里了", nextNode);
     } else {
-      const { nextNode } = nodePointer;
       console.log(nextNode);
       const single = onSingleNode(nextNode[0], data, {
         prevNode: nodePointer.prevNode,
@@ -80,7 +79,7 @@ const onDataResolve = () => {
 
       _.pullAllBy(_data, [{ id: nextNode[0] }], "id");
     }
-  } while (i < 2);
+  } while (i < 3);
 
   // let nodePointers: Array<NodePointerProps> = [];
 
