@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Node, Edge } from "@vue-flow/core";
+
 import { ref } from "vue";
 import { Background } from "@vue-flow/background";
 import { MarkerType, VueFlow, useVueFlow } from "@vue-flow/core";
@@ -23,14 +25,16 @@ const onDataResolve = () => {
   console.log(_.difference([1, 2], [2, 1, 4]));
   const _data = _.cloneDeep(data);
 
-  const nodes = [];
+  const nodes: Node[] = [];
   /* 找到开始部分 */
   const start = _.find(_data, (item) => !item.before.length);
   /* 找到结束部分 */
   const end = _.find(_data, (item) => !item.after.length);
 
-  const startNode = { id: start?.id, type: "custom-original", data: start, position: { x: -64, y: 0 } };
-  const endNode = { id: end?.id, type: "custom-original", data: end, position: { x: -64, y: 180 } };
+  if (!start || !end) return;
+
+  const startNode: Node = { id: start.id, type: "custom-original", data: start, position: { x: -64, y: 0 } };
+  const endNode: Node = { id: end.id, type: "custom-original", data: end, position: { x: -64, y: 180 } };
 
   nodes.push(startNode);
   nodes.push(endNode);
@@ -39,7 +43,7 @@ const onDataResolve = () => {
   /* 移除已经使用的对象 */
   _.pullAllBy(_data, [{ id: start?.id }, { id: end?.id }], "id");
 
-  const step = 80;
+  let step = 80;
   const { width: containerWidth } = onCalculationNodeWidth(nextNode.length);
 
   let nodePointer: NodePointerProps = {
@@ -56,6 +60,8 @@ const onDataResolve = () => {
     console.log(`第 ${i} 层`);
     const { nextNode } = nodePointer;
     if (nextNode.length > 1) {
+      const multiple = onMultipleNode(nextNode, _data, nodes, { step });
+      nodes.push(...multiple.nodes);
       console.log("我到这里了", nextNode);
     } else {
       console.log(nextNode);
@@ -68,6 +74,7 @@ const onDataResolve = () => {
 
       console.log(single.node);
       nodes.push(single.node);
+      step = single.step;
 
       nodePointer = {
         ...nodePointer,
@@ -124,6 +131,48 @@ const onSingleNode = (nodeSign: string, data: any[], options: CreateNodeProps) =
     step: step + 140 + 90,
     connect: nextNode.length ? "" : nodeId
   };
+};
+interface AnyProps {
+  [key: string]: any;
+}
+const onMultipleNode = (nodeSign: Array<string>, data: AnyProps[], nodes: Node[], options: AnyProps = {}) => {
+  const { isChild = false, step = 0 } = options;
+  const _nodes: Node[] = [];
+  const offset = 100;
+
+  if (!isChild) {
+    /* 不是某个节点下的子节点 */
+    const isMiddle = !!(nodeSign.length % 2);
+    const middleIndex = parseInt((nodeSign.length / 2).toString());
+    console.log(isMiddle);
+    if (isMiddle) {
+      /* 奇数 */
+      const nodeId = uuid();
+      const nodeinfo = _.find(data, ["id", nodeSign[middleIndex]]);
+
+      _nodes.push({ id: nodeId, type: "custom", data: nodeinfo, position: { x: -(250 / 2), y: step } });
+
+      for (let i = middleIndex - 1; i >= 0; i--) {
+        console.log(i);
+        const nodeId = uuid();
+        const nodeinfo = _.find(data, ["id", nodeSign[i]]);
+        _nodes.push({ id: nodeId, type: "custom", data: nodeinfo, position: { x: -(250 / 2) - 250 * (i + 1) - offset * (i + 1), y: step } });
+      }
+
+      for (let i = middleIndex + 1; i <= nodeSign.length - 1; i++) {
+        const index = i - (middleIndex + 1);
+        const nodeId = uuid();
+        const nodeinfo = _.find(data, ["id", nodeSign[i]]);
+
+        _nodes.push({ id: nodeId, type: "custom", data: nodeinfo, position: { x: 250 / 2 + 250 * index + offset * (index + 1), y: step } });
+      }
+    } else {
+      /* 偶数 */
+    }
+    console.log(isMiddle);
+  }
+
+  return { nodes: _nodes };
 };
 
 // const onCreateMultipleNode = (nodeSigns: Array<string>, data: AnyProps[], options: CreateNodeProps) => {
