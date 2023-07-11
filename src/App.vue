@@ -141,38 +141,75 @@ const onMultipleNode = (nodeSign: Array<string>, data: AnyProps[], nodes: Node[]
   const offset = 100;
 
   if (!isChild) {
-    /* 不是某个节点下的子节点 */
+    /* 不连接某个子节点 */
     const isMiddle = !!(nodeSign.length % 2);
-    const middleIndex = parseInt((nodeSign.length / 2).toString());
-    console.log(isMiddle);
+
     if (isMiddle) {
       /* 奇数 */
-      const nodeId = uuid();
-      const nodeinfo = _.find(data, ["id", nodeSign[middleIndex]]);
-
-      _nodes.push({ id: nodeId, type: "custom", data: nodeinfo, position: { x: -(250 / 2), y: step } });
-
-      for (let i = middleIndex - 1; i >= 0; i--) {
-        console.log(i);
-        const nodeId = uuid();
-        const nodeinfo = _.find(data, ["id", nodeSign[i]]);
-        _nodes.push({ id: nodeId, type: "custom", data: nodeinfo, position: { x: -(250 / 2) - 250 * (i + 1) - offset * (i + 1), y: step } });
-      }
-
-      for (let i = middleIndex + 1; i <= nodeSign.length - 1; i++) {
-        const index = i - (middleIndex + 1);
-        const nodeId = uuid();
-        const nodeinfo = _.find(data, ["id", nodeSign[i]]);
-
-        _nodes.push({ id: nodeId, type: "custom", data: nodeinfo, position: { x: 250 / 2 + 250 * index + offset * (index + 1), y: step } });
-      }
+      const odd = onOddNumberHandle(nodeSign, data, { step, offset });
+      _nodes.push(...odd);
     } else {
       /* 偶数 */
+      const even = onEvenNumberHandle(nodeSign, data, { step, offset });
+      _nodes.push(...even);
     }
     console.log(isMiddle);
+  } else {
   }
 
   return { nodes: _nodes };
+};
+
+const onOddNumberHandle = (nodeSign: Array<string>, data: AnyProps[], options: AnyProps) => {
+  const { step, offset } = options;
+
+  const nodes: Node[] = [];
+  const middleIndex = parseInt((nodeSign.length / 2).toString());
+
+  const nodeId = uuid();
+  const nodeinfo = _.find(data, ["id", nodeSign[middleIndex]]);
+  nodes.push({ id: nodeId, type: "custom", data: nodeinfo, position: { x: -(250 / 2), y: step } });
+
+  for (let i = middleIndex - 1; i >= 0; i--) {
+    const nodeId = uuid();
+    const nodeinfo = _.find(data, ["id", nodeSign[i]]);
+
+    nodes.push({ id: nodeId, type: "custom", data: nodeinfo, position: { x: -(250 / 2) - 250 * (i + 1) - offset * (i + 1), y: step } });
+  }
+
+  for (let i = middleIndex + 1; i <= nodeSign.length - 1; i++) {
+    const index = i - (middleIndex + 1);
+    const nodeId = uuid();
+    const nodeinfo = _.find(data, ["id", nodeSign[i]]);
+
+    nodes.push({ id: nodeId, type: "custom", data: nodeinfo, position: { x: 250 / 2 + 250 * index + offset * (index + 1), y: step } });
+  }
+
+  return nodes;
+};
+
+const onEvenNumberHandle = (nodeSign: Array<string>, data: AnyProps[], options: AnyProps) => {
+  const { step, offset } = options;
+
+  const nodes: Node[] = [];
+  const middleIndex = parseInt((nodeSign.length / 2).toString());
+
+  for (let i = 0; i < middleIndex; i++) {
+    const nodeId = uuid();
+    const nodeinfo = _.find(data, ["id", nodeSign[i]]);
+
+    nodes.push({ id: nodeId, type: "custom", data: nodeinfo, position: { x: -(250 / 2) - 125 - 50 + (-250 * i - offset * i), y: step } });
+  }
+
+  for (let i = middleIndex; i <= nodeSign.length - 1; i++) {
+    const index = i - middleIndex;
+    const nodeId = uuid();
+    const nodeinfo = _.find(data, ["id", nodeSign[i]]);
+
+    nodes.push({ id: nodeId, type: "custom", data: nodeinfo, position: { x: -(250 / 2) + 125 + 50 + (250 * index + offset * index), y: step } });
+  }
+
+  return nodes;
 };
 
 // const onCreateMultipleNode = (nodeSigns: Array<string>, data: AnyProps[], options: CreateNodeProps) => {
