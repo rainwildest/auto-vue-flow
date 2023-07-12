@@ -147,6 +147,29 @@ const onMultipleNode = (nodeSign: Array<string>, data: AnyProps[], nodes: Node[]
     if (isMiddle) {
       /* 奇数 */
       const odd = onOddNumberHandle(nodeSign, data, { step, offset });
+
+      const oddOffsetFrequency = odd.length - 2;
+      const sort = _.sortBy(odd, ["position.x"]);
+      let next: Array<string> | Array<string[]> = [];
+
+      for (let i = 0; i <= oddOffsetFrequency; i++) {
+        const currentNode = sort[i].data.after;
+        const nextNode = sort[i + 1].data.after;
+
+        const difference = _.difference(currentNode, nextNode);
+
+        if (difference.length) {
+          next.push(currentNode);
+        }
+
+        if (i + 1 === oddOffsetFrequency) next.push(nextNode);
+      }
+
+      if (next.length === 1) {
+        next = _.flatten(next);
+      }
+      console.log(next);
+
       _nodes.push(...odd);
     } else {
       /* 偶数 */
