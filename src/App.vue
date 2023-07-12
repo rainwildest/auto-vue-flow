@@ -19,6 +19,7 @@ interface NodePointerProps {
   nextNode: Array<string>;
   nextPositionX: number;
   step: number;
+  isChild?: boolean;
 }
 
 const onDataResolve = () => {
@@ -61,10 +62,13 @@ const onDataResolve = () => {
     const { nextNode } = nodePointer;
     if (nextNode.length > 1) {
       const multiple = onMultipleNode(nextNode, _data, nodes, { step });
+
+      console.log(multiple);
+
+      step = multiple.step;
       nodes.push(...multiple.nodes);
       console.log("我到这里了", nextNode);
     } else {
-      console.log(nextNode);
       const single = onSingleNode(nextNode[0], data, {
         prevNode: nodePointer.prevNode,
         tailNode: end?.id || "",
@@ -72,7 +76,6 @@ const onDataResolve = () => {
         step: nodePointer.step
       });
 
-      console.log(single.node);
       nodes.push(single.node);
       step = single.step;
 
@@ -135,10 +138,19 @@ const onSingleNode = (nodeSign: string, data: any[], options: CreateNodeProps) =
 interface AnyProps {
   [key: string]: any;
 }
+
+interface NextInfo {
+  next: Array<string> | Array<string[]>;
+  isChild: boolean;
+  isMix: boolean;
+  isSingle?: boolean;
+  nextPositionX?: number;
+}
 const onMultipleNode = (nodeSign: Array<string>, data: AnyProps[], nodes: Node[], options: AnyProps = {}) => {
   const { isChild = false, step = 0 } = options;
   const _nodes: Node[] = [];
   const offset = 100;
+  let info: NextInfo = { next: [] as Array<string> | Array<string[]>, isChild: false, isMix: false };
 
   if (!isChild) {
     /* 不连接某个子节点 */
@@ -148,28 +160,8 @@ const onMultipleNode = (nodeSign: Array<string>, data: AnyProps[], nodes: Node[]
       /* 奇数 */
       const odd = onOddNumberHandle(nodeSign, data, { step, offset });
 
-      const oddOffsetFrequency = odd.length - 2;
-      const sort = _.sortBy(odd, ["position.x"]);
-      let next: Array<string> | Array<string[]> = [];
-
-      for (let i = 0; i <= oddOffsetFrequency; i++) {
-        const currentNode = sort[i].data.after;
-        const nextNode = sort[i + 1].data.after;
-
-        const difference = _.difference(currentNode, nextNode);
-
-        if (difference.length) {
-          next.push(currentNode);
-        }
-
-        if (i + 1 === oddOffsetFrequency) next.push(nextNode);
-      }
-
-      if (next.length === 1) {
-        next = _.flatten(next);
-      }
-      console.log(next);
-
+      info = onGetNextInfo(odd);
+      console.log(info);
       _nodes.push(...odd);
     } else {
       /* 偶数 */
@@ -180,9 +172,15 @@ const onMultipleNode = (nodeSign: Array<string>, data: AnyProps[], nodes: Node[]
   } else {
   }
 
-  return { nodes: _nodes };
+  return { nodes: _nodes, step: step + 140 + 90, ...info };
 };
 
+/**
+ * @brief 奇数处理逻辑
+ * @param {Array<string>} nodeSign
+ * @param {AnyProps[]} data
+ * @param {AnyProps} options
+ */
 const onOddNumberHandle = (nodeSign: Array<string>, data: AnyProps[], options: AnyProps) => {
   const { step, offset } = options;
 
@@ -211,6 +209,12 @@ const onOddNumberHandle = (nodeSign: Array<string>, data: AnyProps[], options: A
   return nodes;
 };
 
+/**
+ * @brief 偶数处理逻辑
+ * @param {Array<string>} nodeSign
+ * @param {AnyProps[]} data
+ * @param {AnyProps} options
+ */
 const onEvenNumberHandle = (nodeSign: Array<string>, data: AnyProps[], options: AnyProps) => {
   const { step, offset } = options;
 
@@ -233,6 +237,38 @@ const onEvenNumberHandle = (nodeSign: Array<string>, data: AnyProps[], options: 
   }
 
   return nodes;
+};
+
+/**
+ * @brief 处理多节点下一节点信息
+ * @param {Array<Node>} data
+ */
+const onGetNextInfo = (data: Array<Node>) => {
+  const oddOffsetFrequency = data.length - 2;
+  const sort = _.sortBy(data, ["position.x"]);
+  let info: NextInfo = { next: [], isChild: true, isMix: true };
+
+  for (let i = 0; i <= oddOffsetFrequency; i++) {
+    const currentNode = sort[i].data.after;
+    const nextNode = sort[i + 1].data.after;
+
+    const difference = _.difference(currentNode, nextNode);
+
+    if (difference.length) {
+      info.next.push(currentNode);
+    }
+
+    if (i + 1 === oddOffsetFrequency) info.next.push(nextNode);
+  }
+
+  if (info.next.length === 1) {
+    const next = _.flatten(info.next);
+    info = { ...info, next, isChild: false, isMix: false };
+
+    next.length === 1 && (info = { ...info, nextPositionX: -(250 / 2), isSingle: true });
+  }
+
+  return { ...info };
 };
 
 // const onCreateMultipleNode = (nodeSigns: Array<string>, data: AnyProps[], options: CreateNodeProps) => {
