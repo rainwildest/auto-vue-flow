@@ -67,7 +67,6 @@ const onDataResolve = () => {
 
       step = multiple.step;
       nodes.push(...multiple.nodes);
-      console.log("我到这里了", nextNode);
     } else {
       const single = onSingleNode(nextNode[0], data, {
         prevNode: nodePointer.prevNode,
