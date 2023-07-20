@@ -15,7 +15,7 @@ import { UUID } from "./utils";
 const uuid = UUID(1);
 
 interface NodePointerProps {
-  prevNode: string;
+  prevNode: string[] | string;
   nextNode: Array<string>;
   nextPositionX: number;
   step: number;
@@ -63,10 +63,19 @@ const onDataResolve = () => {
     if (nextNode.length > 1) {
       const multiple = onMultipleNode(nextNode, _data, nodes, { step });
 
-      console.log(multiple);
-
       step = multiple.step;
       nodes.push(...multiple.nodes);
+      console.log(multiple);
+      if (multiple.next.length === 1) {
+        console.log(_.map(multiple.nodes, "id"));
+        nodePointer = {
+          ...nodePointer,
+          prevNode: _.map(multiple.nodes, "id") as string[],
+          nextNode: multiple.next as string[],
+          step: multiple.step,
+          nextPositionX: multiple.nextPositionX || 0
+        };
+      }
     } else {
       const single = onSingleNode(nextNode[0], data, {
         prevNode: nodePointer.prevNode,
@@ -74,7 +83,7 @@ const onDataResolve = () => {
         positionX: nodePointer.nextPositionX,
         step: nodePointer.step
       });
-
+      console.log(single.node);
       nodes.push(single.node);
       step = single.step;
 
@@ -88,7 +97,7 @@ const onDataResolve = () => {
 
       _.pullAllBy(_data, [{ id: nextNode[0] }], "id");
     }
-  } while (i < 3);
+  } while (i < 4);
 
   // let nodePointers: Array<NodePointerProps> = [];
 
@@ -109,7 +118,7 @@ const onCalculationNodeWidth = (amount: number) => {
 };
 
 interface CreateNodeProps {
-  prevNode: string;
+  prevNode: string[] | string;
   tailNode: string;
   positionX: number;
   step: number;
@@ -124,10 +133,17 @@ const onSingleNode = (nodeSign: string, data: any[], options: CreateNodeProps) =
   // const { width } = onCalculationNodeWidth(nextNode.length);
   // const nextPositionX = nextNode.length === 1 ? positionX : 64 - width / 2;
   const nextPositionX = positionX;
+  const edge: Edge[] = (typeof prevNode === "string" ? [prevNode] : prevNode).map((key) => ({
+    id: uuid(),
+    source: key,
+    target: nodeId,
+    type: "step",
+    markerEnd: MarkerType.ArrowClosed
+  }));
 
   return {
     node: { id: nodeId, type: "custom", position: { x: positionX, y: step }, data: nodeinfo },
-    edge: { id: uuid(), source: prevNode, target: nodeId, type: "step", markerEnd: MarkerType.ArrowClosed },
+    edge,
     nextNode,
     nextPositionX,
     step: step + 140 + 90,
@@ -158,7 +174,7 @@ const onMultipleNode = (nodeSign: Array<string>, data: AnyProps[], nodes: Node[]
     if (isMiddle) {
       /* 奇数 */
       const odd = onOddNumberHandle(nodeSign, data, { step, offset });
-
+      console.log(odd, _.map(odd, "data.id"));
       info = onGetNextInfo(odd);
       console.log(info);
       _nodes.push(...odd);
