@@ -26,13 +26,14 @@ const onDataResolve = () => {
   console.log(_.difference([1, 2], [2, 1, 4]));
   const _data = _.cloneDeep(data);
 
+  const edges: Edge[] = [];
   const nodes: Node[] = [];
   /* 找到开始部分 */
   const start = _.find(_data, (item) => !item.before.length);
   /* 找到结束部分 */
   const end = _.find(_data, (item) => !item.after.length);
 
-  if (!start || !end) return;
+  if (!start || !end) return { nodes, edges };
 
   const startNode: Node = { id: start.id, type: "custom-original", data: start, position: { x: -64, y: 0 } };
   const endNode: Node = { id: end.id, type: "custom-original", data: end, position: { x: -64, y: 180 } };
@@ -61,10 +62,11 @@ const onDataResolve = () => {
     console.log(`第 ${i} 层`);
     const { nextNode } = nodePointer;
     if (nextNode.length > 1) {
-      const multiple = onMultipleNode(nextNode, _data, nodes, { step });
+      const multiple = onMultipleNode(nextNode, _data, nodes, { step, prevNode: nodePointer.prevNode });
 
       step = multiple.step;
       nodes.push(...multiple.nodes);
+      edges.push(...multiple.edges);
       console.log(multiple);
       if (multiple.next.length === 1) {
         console.log(_.map(multiple.nodes, "id"));
@@ -83,8 +85,8 @@ const onDataResolve = () => {
         positionX: nodePointer.nextPositionX,
         step: nodePointer.step
       });
-      console.log(single.node);
       nodes.push(single.node);
+      edges.push(...single.edges);
       step = single.step;
 
       nodePointer = {
@@ -104,7 +106,7 @@ const onDataResolve = () => {
   // console.log(start)
   // console.log(end)
 
-  return nodes;
+  return { nodes, edges };
 };
 
 /**
@@ -133,7 +135,7 @@ const onSingleNode = (nodeSign: string, data: any[], options: CreateNodeProps) =
   // const { width } = onCalculationNodeWidth(nextNode.length);
   // const nextPositionX = nextNode.length === 1 ? positionX : 64 - width / 2;
   const nextPositionX = positionX;
-  const edge: Edge[] = (typeof prevNode === "string" ? [prevNode] : prevNode).map((key) => ({
+  const edges: Edge[] = (typeof prevNode === "string" ? [prevNode] : prevNode).map((key) => ({
     id: uuid(),
     source: key,
     target: nodeId,
@@ -143,7 +145,7 @@ const onSingleNode = (nodeSign: string, data: any[], options: CreateNodeProps) =
 
   return {
     node: { id: nodeId, type: "custom", position: { x: positionX, y: step }, data: nodeinfo },
-    edge,
+    edges,
     nextNode,
     nextPositionX,
     step: step + 140 + 90,
@@ -162,7 +164,8 @@ interface NextInfo {
   nextPositionX?: number;
 }
 const onMultipleNode = (nodeSign: Array<string>, data: AnyProps[], nodes: Node[], options: AnyProps = {}) => {
-  const { isChild = false, step = 0 } = options;
+  const { isChild = false, step = 0, prevNode } = options;
+
   const _nodes: Node[] = [];
   const offset = 100;
   let info: NextInfo = { next: [] as Array<string> | Array<string[]>, isChild: false, isMix: false };
@@ -174,20 +177,24 @@ const onMultipleNode = (nodeSign: Array<string>, data: AnyProps[], nodes: Node[]
     if (isMiddle) {
       /* 奇数 */
       const odd = onOddNumberHandle(nodeSign, data, { step, offset });
-      console.log(odd, _.map(odd, "data.id"));
-      info = onGetNextInfo(odd);
-      console.log(info);
       _nodes.push(...odd);
+
+      info = onGetNextInfo(odd);
     } else {
       /* 偶数 */
       const even = onEvenNumberHandle(nodeSign, data, { step, offset });
       _nodes.push(...even);
     }
-    console.log(isMiddle);
   } else {
   }
 
-  return { nodes: _nodes, step: step + 140 + 90, ...info };
+  const ids = _.map(_nodes, "id");
+  let edges = (typeof prevNode === "string" ? [prevNode] : prevNode).map((key: string) => {
+    return ids.map((id) => ({ id: uuid(), source: key, target: id, type: "step", markerEnd: MarkerType.ArrowClosed }));
+  });
+  edges = _.flatten(edges);
+
+  return { nodes: _nodes, step: step + 140 + 90, ...info, edges };
 };
 
 /**
@@ -408,7 +415,8 @@ const onGetNextInfo = (data: Array<Node>) => {
 // };
 
 // const { onConnect, addEdges, addNodes, onReady } = useVueFlow()
-const elements = ref<any>([...onDataResolve()]);
+const { nodes, edges } = onDataResolve();
+const elements = ref<any[]>([...nodes, ...edges]);
 
 const { onPaneReady } = useVueFlow();
 
