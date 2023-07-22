@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Node, Edge } from "@vue-flow/core";
 
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { Background } from "@vue-flow/background";
 import { MarkerType, VueFlow, useVueFlow } from "@vue-flow/core";
 
@@ -12,8 +12,10 @@ import CustomGroup from "./components/CustomGroup.vue";
 
 import data from "./data";
 import { UUID } from "./utils";
-const uuid = UUID(1);
+import { useLayout } from "./useLayout";
 
+const uuid = UUID(1);
+useLayout();
 interface NodePointerProps {
   prevNode: string[] | string;
   nextNode: Array<string>;
@@ -21,7 +23,41 @@ interface NodePointerProps {
   step: number;
   isChild?: boolean;
 }
+const { onPaneReady, addEdges, addNodes } = useVueFlow({
+  nodes: []
+});
 
+onMounted(() => {
+  const nodes: Node[] = [
+    { id: "1", position: { x: 0, y: 0 }, label: "1", type: "custom-original", data: { before: [], after: ["2"] } },
+
+    { id: "3", position: { x: 0, y: 0 }, label: "3", type: "custom", data: { name: "3" } },
+    { id: "4", position: { x: 0, y: 0 }, label: "3", type: "custom", data: { name: "4" } },
+
+    { id: "oo", position: { x: 0, y: 0 }, label: "3", type: "custom", data: { name: "oo" } },
+    { id: "6", position: { x: 0, y: 0 }, label: "3", type: "custom", data: { name: "6" } },
+    { id: "7", position: { x: 0, y: 0 }, label: "3", type: "custom", data: { name: "7" } },
+
+    { id: "2", position: { x: 0, y: 0 }, label: "2", type: "custom-original", data: { after: [], before: ["1"] } }
+  ];
+
+  const edges: Edge[] = [
+    { id: uuid(), source: "1", target: "3", type: "step" },
+    { id: uuid(), source: "1", target: "4", type: "step" },
+
+    { id: uuid(), source: "3", target: "oo", type: "step" },
+    { id: uuid(), source: "3", target: "7", type: "step" },
+    { id: uuid(), source: "3", target: "6", type: "step" },
+
+    { id: uuid(), source: "7", target: "2", type: "step" },
+    { id: uuid(), source: "6", target: "2", type: "step" },
+    { id: uuid(), source: "oo", target: "2", type: "step" },
+    { id: uuid(), source: "4", target: "2", type: "step" }
+  ];
+
+  addNodes([...nodes]);
+  addEdges([...edges]);
+});
 const onDataResolve = () => {
   console.log(_.difference([1, 2], [2, 1, 4]));
   const _data = _.cloneDeep(data);
@@ -415,10 +451,8 @@ const onGetNextInfo = (data: Array<Node>) => {
 // };
 
 // const { onConnect, addEdges, addNodes, onReady } = useVueFlow()
-const { nodes, edges } = onDataResolve();
-const elements = ref<any[]>([...nodes, ...edges]);
-
-const { onPaneReady } = useVueFlow();
+// const { nodes, edges } = onDataResolve();
+// const elements = ref<any[]>([...nodes, ...edges]);
 
 onPaneReady(({ fitView }) => {
   fitView();
@@ -427,7 +461,7 @@ onPaneReady(({ fitView }) => {
 
 <template>
   <div class="h-screen w-screen overflow-hidden bg-gray-50">
-    <VueFlow v-model="elements" :default-viewport="{ zoom: 1.5 }" :min-zoom="0.2" :max-zoom="2" class="h-full w-full">
+    <VueFlow :default-viewport="{ zoom: 1.5 }" :min-zoom="0.2" :max-zoom="2" class="h-full w-full">
       <template #node-custom-original="props">
         <CustomOriginal :data="props.data" />
       </template>
@@ -436,8 +470,8 @@ onPaneReady(({ fitView }) => {
         <CustomNode :data="props.data" />
       </template>
 
-      <template #node-custom-group>
-        <CustomGroup />
+      <template #node-custom-group="props">
+        <CustomGroup :data="props.data" />
       </template>
 
       <Background class="h-full w-full" />
